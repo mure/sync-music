@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     player = new YT.Player('player', {
       height: '390',
       width: '640',
-      videoId: 'vCXsRoyFRQE',
+      videoId: 'tvTRZJ-4EyI',
       playerVars: { 'autoplay': 0, 'controls': 0 },
       events: {
           'onStateChange': onPlayerStateChange
@@ -15,10 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
       
   var ready = false;
-  var status = document.getElementById('status');
   function onPlayerStateChange(event) {
-    status.innerHTML = event.data;
-    
     if (event.data === 1 && ready === false) {
       player.pauseVideo();
       player.seekTo(0);
@@ -26,25 +23,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  /////////////////////////////////////////////////
+  /* SYNCING */
 
   socket = io();
   
   var syncButton = document.getElementById('sync');
+  var bestRtt = 9999;
+  var counter = 0;
   
   var time = 0;
   syncButton.addEventListener("click", function () {
+    player.playVideo();
+    
     time = performance.now();
     socket.emit('sync');
   });
   
-  var rtt = 0;
+  var offset = 0;
+  
   socket.on('sync', function(serverTime) {
-    rtt = performance.now() - time;
+    var rtt = performance.now() - time;
+    
+    if (rtt < bestRtt) {
+      offset = serverTime - Date.now() + rtt * 0.5;
+      bestRtt = rtt;
+    }
+    
+    if (counter < 10) {
+      
+    }
+    
   });
   
   
-  /////////////////////////
+  /**/
   var playButton = document.getElementById('play');
 
   playButton.addEventListener("click", function () {
@@ -52,22 +64,24 @@ document.addEventListener('DOMContentLoaded', function() {
   });
     
   socket.on('start', function(startTime) {
-    var delay = startTime - rtt * 0.5;
-    var currentTime = performance.now();
+    var delay = startTime - (Date.now() + offset);
     
-    var intervalID = setInterval(function() {
-      if (performance.now() - currentTime >= delay) {
+    var start = performance.now();
+    var intervalId = window.setInterval(function() {
+      var diff = performance.now() - start;
+      if (diff >= delay) {
         player.playVideo();
-        clearInterval(intervalID);
-      } 
+        //socket.emit('print', diff - delay);
+        
+        clearInterval(intervalId);
+      }
     }, 0);
     
-  });
-  
-  function waitToStart() {
+    // doTimer(delay, 200, function () {
+    //   player.playVideo();
+    // });
     
-  }
-  
-  
+  });
+
 });
   

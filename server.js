@@ -18,7 +18,7 @@ io.sockets.on('connection',
   
     socket.on('start',
       function(data) {
-        io.sockets.emit('start', 1000);
+        io.sockets.emit('start', Date.now() + 400);
       }
     );
   
