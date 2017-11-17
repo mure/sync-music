@@ -1,39 +1,46 @@
 document.addEventListener('DOMContentLoaded', function() {
-    
-  socket = io();
-  var context, source;
   
-  var request = new XMLHttpRequest();
-  request.open('GET', 'https://cdn.glitch.com/b350410e-faf0-4604-9001-f6970313500e%2Fabrasive.mp3?1509677732140', true);
-  request.responseType = 'arraybuffer';
-  
-  request.onload = function() {
-    context.decodeAudioData(request.response, function(buffer) {  
-      source.buffer = buffer;                    // tell the source which sound to play
-      source.connect(context.destination);       // connect the source to the context's destination (the speakers)
+  var player;
+
+  window.onYouTubeIframeAPIReady = function() {
+    player = new YT.Player('player', {
+      height: '390',
+      width: '640',
+      videoId: 'vCXsRoyFRQE',
+      playerVars: { 'autoplay': 0, 'controls': 0 },
+      events: {
+          'onStateChange': onPlayerStateChange
+        }
     });
   }
+      
+  var ready = false;
+  var status = document.getElementById('status');
+  function onPlayerStateChange(event) {
+    status.innerHTML = event.data;
+    
+    if (event.data === 1 && ready === false) {
+      player.pauseVideo();
+      player.seekTo(0);
+      ready = true;
+    }
+  }
+  
+  /////////////////////////////////////////////////
+
+  socket = io();
   
   var syncButton = document.getElementById('sync');
   
   var time = 0;
   syncButton.addEventListener("click", function () {
-    window.AudioContext = window.AudioContext || window.webkitAudioContext;
-    context = new AudioContext();
-    source = context.createBufferSource(); // creates a sound source
-    
-    request.send();
-    
     time = performance.now();
     socket.emit('sync');
   });
   
-  var offset = 0;
-  
-  var request;
+  var rtt = 0;
   socket.on('sync', function(serverTime) {
-    var rtt = performance.now() - time;
-    offset = serverTime - Date.now() + rtt * 0.5;
+    rtt = performance.now() - time;
   });
   
   
@@ -43,12 +50,23 @@ document.addEventListener('DOMContentLoaded', function() {
   playButton.addEventListener("click", function () {
     socket.emit('start');
   });
-  
-  
+    
   socket.on('start', function(startTime) {
-    var time = startTime - (Date.now() + offset);
-    source.start(context.currentTime + time/1000.0);
+    var delay = startTime - rtt * 0.5;
+    var currentTime = performance.now();
+    
+    var intervalID = setInterval(function() {
+      if (performance.now() - currentTime >= delay) {
+        player.playVideo();
+        clearInterval(intervalID);
+      } 
+    }, 0);
+    
   });
+  
+  function waitToStart() {
+    
+  }
   
   
 });
