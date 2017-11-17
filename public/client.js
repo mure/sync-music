@@ -3,15 +3,17 @@ document.addEventListener('DOMContentLoaded', function() {
   var player;
 
   window.onYouTubeIframeAPIReady = function() {
-    player = new YT.Player('player', {
-      height: '390',
-      width: '640',
-      videoId: 'tvTRZJ-4EyI',
-      playerVars: { 'autoplay': 0, 'controls': 0 },
-      events: {
-          'onStateChange': onPlayerStateChange
-        }
-    });
+    if (!player) {
+      player = new YT.Player('player', {
+        height: '390',
+        width: '640',
+        videoId: 'tvTRZJ-4EyI',
+        playerVars: { 'autoplay': 0, 'controls': 0 },
+        events: {
+            'onStateChange': onPlayerStateChange
+          }
+      });
+    }
   }
       
   var ready = false;
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', function() {
       ready = true;
     }
   }
+  
+  window.setTimeout(window.onYouTubeIframeAPIReady, 200);
   
   /* SYNCING */
 
@@ -46,17 +50,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (rtt < bestRtt) {
       offset = serverTime - Date.now() + rtt * 0.5;
+      console.log(offset);
       bestRtt = rtt;
     }
     
-    if (counter < 10) {
-      
+    if (counter < 15) {
+      time = performance.now();
+      socket.emit('sync');
     }
     
+    counter++;
   });
   
   
-  /**/
+  /* PLAYING */
+  
   var playButton = document.getElementById('play');
 
   playButton.addEventListener("click", function () {
@@ -71,15 +79,35 @@ document.addEventListener('DOMContentLoaded', function() {
       var diff = performance.now() - start;
       if (diff >= delay) {
         player.playVideo();
-        //socket.emit('print', diff - delay);
         
         clearInterval(intervalId);
       }
     }, 0);
     
-    // doTimer(delay, 200, function () {
-    //   player.playVideo();
-    // });
+  });
+  
+  /* JOINING */
+  document.getElementById('join').addEventListener("click", function () {
+    socket.emit('join');
+  });
+    
+  socket.on('join', function(startTime) {
+    var timePassed = (Date.now() + offset) - startTime;
+        
+    var seekTime = Math.ceil((timePassed + 1000)/1000);
+    player.seekTo(seekTime);
+    
+    var delay = seekTime * 1000 - timePassed;
+
+    var start = performance.now();
+    var intervalId = window.setInterval(function() {
+      var diff = performance.now() - start;
+      if (diff >= delay) {
+        player.playVideo();
+        
+        clearInterval(intervalId);
+      }
+    }, 0);
     
   });
 

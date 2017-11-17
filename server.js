@@ -6,6 +6,8 @@ app.use(express.static('public'));
 
 var io = require('socket.io')(server);
 
+var startTime = 0;
+
 io.sockets.on('connection',
   // We are given a websocket object in our function
   function (socket) {
@@ -18,7 +20,14 @@ io.sockets.on('connection',
   
     socket.on('start',
       function(data) {
-        io.sockets.emit('start', Date.now() + 400);
+        startTime = Date.now() + 400;
+        io.sockets.emit('start', startTime);
+      }
+    );
+  
+    socket.on('join',
+      function(data) {
+        socket.emit('join', startTime);
       }
     );
   
